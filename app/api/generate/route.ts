@@ -42,6 +42,7 @@ type GenerateRequest = {
   season?: string;
   materials?: string;
   avoid?: string;
+  avoidTitles?: string[];
 };
 
 function buildUserPrompt(input: GenerateRequest): string {
@@ -53,6 +54,11 @@ function buildUserPrompt(input: GenerateRequest): string {
   if (input.season) lines.push(`- 季節・行事: ${input.season}`);
   if (input.materials) lines.push(`- 利用可能な道具: ${input.materials}`);
   if (input.avoid) lines.push(`- 避けたい活動: ${input.avoid}`);
+  if (input.avoidTitles && input.avoidTitles.length > 0) {
+    lines.push("");
+    lines.push("## 直近で提案済みの活動（これらとは内容・アプローチを変えた新しい案を出してください）:");
+    input.avoidTitles.slice(0, 30).forEach((t) => lines.push(`- ${t}`));
+  }
   return lines.join("\n");
 }
 
