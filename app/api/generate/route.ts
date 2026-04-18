@@ -22,7 +22,7 @@ const SYSTEM_PROMPT = `あなたは介護レクリエーションの専門家で
 7. **少ない準備物**: 事業所にある一般的な備品（新聞紙、ペットボトル、タオル、色画用紙、お手玉など）を優先
 
 ## 出力要件
-ちょうど3つの提案を返してください。
+各活動は次の構造:
 - title: 活動名（15字以内）
 - category: 体操/脳トレ/音楽/創作/季節行事/ゲーム/回想 のいずれか
 - duration: 所要時間（例: 約30分）
@@ -32,7 +32,8 @@ const SYSTEM_PROMPT = `あなたは介護レクリエーションの専門家で
 - difficulty_adjustments.easier: 身体機能が低い方への配慮（1〜2文）
 - difficulty_adjustments.harder: より活動的な方への工夫（1〜2文）
 - safety_notes: 安全配慮の配列
-- talking_points: 声かけ例や盛り上げポイントの配列`;
+- talking_points: 声かけ例や盛り上げポイントの配列
+- day_label: 週間プランの場合のみ「月曜日」「火曜日」等を記入、単発生成では空文字列`;
 
 type GenerateRequest = {
   participants?: string;
@@ -43,10 +44,20 @@ type GenerateRequest = {
   materials?: string;
   avoid?: string;
   avoidTitles?: string[];
+  mode?: "single" | "weekly";
 };
 
 function buildUserPrompt(input: GenerateRequest): string {
-  const lines: string[] = ["以下の条件でレクリエーション案を3つ考えてください。"];
+  const isWeekly = input.mode === "weekly";
+  const lines: string[] = isWeekly
+    ? [
+        "来週1週間分（月曜日〜金曜日）のレクリエーション計画を考えてください。各曜日に1つの活動、合計5つ。",
+        "カテゴリ（体操/脳トレ/音楽/創作/季節行事/ゲーム/回想）がなるべく異なるようバランス良く配分してください。",
+        "各活動の day_label に「月曜日」「火曜日」「水曜日」「木曜日」「金曜日」のいずれかを必ず記入してください。",
+        "",
+      ]
+    : ["以下の条件でレクリエーション案を3つ考えてください。各活動の day_label は空文字列にしてください。"];
+
   if (input.participants) lines.push(`- 参加人数: ${input.participants}`);
   if (input.level) lines.push(`- 身体機能レベル: ${input.level}`);
   if (input.duration) lines.push(`- 所要時間: ${input.duration}`);
@@ -86,6 +97,7 @@ const responseSchema = {
           },
           safety_notes: { type: Type.ARRAY, items: { type: Type.STRING } },
           talking_points: { type: Type.ARRAY, items: { type: Type.STRING } },
+          day_label: { type: Type.STRING },
         },
         required: [
           "title",
@@ -97,6 +109,7 @@ const responseSchema = {
           "difficulty_adjustments",
           "safety_notes",
           "talking_points",
+          "day_label",
         ],
       },
     },

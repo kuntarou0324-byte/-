@@ -11,6 +11,7 @@ export type Activity = {
   };
   safety_notes: string[];
   talking_points: string[];
+  day_label?: string;
 };
 
 export type FormState = {
