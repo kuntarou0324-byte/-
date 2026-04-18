@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, Type } from "@google/genai";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -21,29 +21,18 @@ const SYSTEM_PROMPT = `あなたは介護レクリエーションの専門家で
 6. **段階的な難易度調整**: 身体機能レベルに応じた易化・難化の具体例を必ず示す
 7. **少ない準備物**: 事業所にある一般的な備品（新聞紙、ペットボトル、タオル、色画用紙、お手玉など）を優先
 
-## 出力形式
-以下の JSON 形式で、ちょうど3つの提案を出力してください。JSON以外の文字（説明文・markdown記法）は一切含めないでください。
-
-{
-  "activities": [
-    {
-      "title": "活動名（15字以内）",
-      "category": "カテゴリ（体操/脳トレ/音楽/創作/季節行事/ゲーム/回想 のいずれか）",
-      "duration": "所要時間（例: 約30分）",
-      "goal": "ねらい（2〜3文、50〜100字）",
-      "materials": ["準備物1", "準備物2"],
-      "steps": ["手順1（1文）", "手順2", "手順3"],
-      "difficulty_adjustments": {
-        "easier": "身体機能が低い方への配慮（1〜2文）",
-        "harder": "より活動的な方への工夫（1〜2文）"
-      },
-      "safety_notes": ["安全配慮1", "安全配慮2"],
-      "talking_points": ["声かけ例や盛り上げポイント1", "2"]
-    }
-  ]
-}
-
-手順は3〜7ステップで、各ステップは職員がすぐ実行できる具体的な動作で書いてください。`;
+## 出力要件
+ちょうど3つの提案を返してください。
+- title: 活動名（15字以内）
+- category: 体操/脳トレ/音楽/創作/季節行事/ゲーム/回想 のいずれか
+- duration: 所要時間（例: 約30分）
+- goal: ねらい（2〜3文、50〜100字）
+- materials: 準備物の配列
+- steps: 3〜7ステップ、各ステップは職員がすぐ実行できる具体的な1文
+- difficulty_adjustments.easier: 身体機能が低い方への配慮（1〜2文）
+- difficulty_adjustments.harder: より活動的な方への工夫（1〜2文）
+- safety_notes: 安全配慮の配列
+- talking_points: 声かけ例や盛り上げポイントの配列`;
 
 type GenerateRequest = {
   participants?: string;
@@ -67,10 +56,53 @@ function buildUserPrompt(input: GenerateRequest): string {
   return lines.join("\n");
 }
 
+const responseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    activities: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          category: { type: Type.STRING },
+          duration: { type: Type.STRING },
+          goal: { type: Type.STRING },
+          materials: { type: Type.ARRAY, items: { type: Type.STRING } },
+          steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+          difficulty_adjustments: {
+            type: Type.OBJECT,
+            properties: {
+              easier: { type: Type.STRING },
+              harder: { type: Type.STRING },
+            },
+            required: ["easier", "harder"],
+          },
+          safety_notes: { type: Type.ARRAY, items: { type: Type.STRING } },
+          talking_points: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: [
+          "title",
+          "category",
+          "duration",
+          "goal",
+          "materials",
+          "steps",
+          "difficulty_adjustments",
+          "safety_notes",
+          "talking_points",
+        ],
+      },
+    },
+  },
+  required: ["activities"],
+};
+
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY が設定されていません" },
+      { error: "GEMINI_API_KEY が設定されていません" },
       { status: 500 },
     );
   }
@@ -82,59 +114,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
 
-  const client = new Anthropic();
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 4096,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [{ role: "user", content: buildUserPrompt(body) }],
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: buildUserPrompt(body),
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: "application/json",
+        responseSchema,
+        temperature: 0.9,
+      },
     });
 
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    const text = response.text ?? "";
+    if (!text) {
       return NextResponse.json(
-        { error: "AI応答の解析に失敗しました", raw: text },
+        { error: "AI応答が空でした" },
         { status: 502 },
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(text);
     return NextResponse.json({
       activities: parsed.activities ?? [],
-      usage: {
-        cache_read: response.usage.cache_read_input_tokens ?? 0,
-        cache_write: response.usage.cache_creation_input_tokens ?? 0,
-        input: response.usage.input_tokens,
-        output: response.usage.output_tokens,
-      },
     });
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/quota|rate/i.test(message)) {
       return NextResponse.json(
         { error: "リクエストが集中しています。少し待ってから再試行してください。" },
         { status: 429 },
       );
     }
-    if (error instanceof Anthropic.APIError) {
-      return NextResponse.json(
-        { error: `API エラー: ${error.message}` },
-        { status: error.status ?? 500 },
-      );
-    }
-    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
