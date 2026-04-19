@@ -1,4 +1,4 @@
-import type { Activity } from "../types";
+import type { Activity, ExecutionRecord } from "../types";
 
 type Props = {
   activity: Activity;
@@ -7,8 +7,10 @@ type Props = {
   onVariation?: () => void;
   onExecute?: () => void;
   onAsk?: () => void;
+  onRecord?: () => void;
   variationLoading?: boolean;
   savedAt?: string;
+  records?: ExecutionRecord[];
 };
 
 export function ActivityCard({
@@ -18,9 +20,19 @@ export function ActivityCard({
   onVariation,
   onExecute,
   onAsk,
+  onRecord,
   variationLoading,
   savedAt,
+  records,
 }: Props) {
+  const activityRecords = (records ?? []).filter(
+    (r) => r.activityTitle === activity.title,
+  );
+  const goodCount = activityRecords.filter((r) => r.reaction === "好評").length;
+  const poorCount = activityRecords.filter(
+    (r) => r.reaction === "反応薄い",
+  ).length;
+
   return (
     <article className="relative flex flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       {variationLoading && (
@@ -44,6 +56,17 @@ export function ActivityCard({
             {activity.title}
           </h3>
           <p className="text-xs text-slate-500">{activity.duration}</p>
+          {activityRecords.length > 0 && (
+            <p className="mt-1 text-xs text-slate-600">
+              過去{activityRecords.length}回実施
+              {goodCount > 0 && (
+                <span className="ml-1 text-emerald-700">(好評 {goodCount})</span>
+              )}
+              {poorCount > 0 && (
+                <span className="ml-1 text-amber-700">(反応薄 {poorCount})</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 
@@ -103,7 +126,7 @@ export function ActivityCard({
         </ul>
       </Section>
 
-      {(onSave || onRemove || onVariation || onExecute || onAsk) && (
+      {(onSave || onRemove || onVariation || onExecute || onAsk || onRecord) && (
         <div className="mt-4 flex flex-wrap items-center gap-2 no-print">
           {savedAt && (
             <span className="text-xs text-slate-500">
@@ -118,6 +141,15 @@ export function ActivityCard({
                 className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 ▶ 実施モード
+              </button>
+            )}
+            {onRecord && (
+              <button
+                onClick={onRecord}
+                disabled={variationLoading}
+                className="rounded border border-emerald-500 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                実施を記録
               </button>
             )}
             {onAsk && (

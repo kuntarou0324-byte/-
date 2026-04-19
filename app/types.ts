@@ -25,3 +25,14 @@ export type FormState = {
 };
 
 export type SavedActivity = Activity & { savedAt: string; id: string };
+
+export type ExecutionRecord = {
+  id: string;
+  activityTitle: string;
+  activityCategory: string;
+  date: string;
+  participants: number;
+  reaction: "好評" | "普通" | "反応薄い";
+  note: string;
+  createdAt: string;
+};

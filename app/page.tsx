@@ -6,14 +6,22 @@ import { AskModal } from "./components/AskModal";
 import { ExecutionMode } from "./components/ExecutionMode";
 import { PlannerForm } from "./components/PlannerForm";
 import { PresetManager, type Preset } from "./components/PresetManager";
+import { RecordList } from "./components/RecordList";
+import { RecordModal } from "./components/RecordModal";
 import { SavedList } from "./components/SavedList";
 import { getTodaySeasonContext } from "./lib/season";
-import type { Activity, FormState, SavedActivity } from "./types";
+import type {
+  Activity,
+  ExecutionRecord,
+  FormState,
+  SavedActivity,
+} from "./types";
 
 const STORAGE_KEY = "recreation-favorites-v1";
 const HISTORY_KEY = "recreation-history-v1";
 const FORM_KEY = "recreation-form-v1";
 const PRESETS_KEY = "recreation-presets-v1";
+const RECORDS_KEY = "recreation-records-v1";
 const HISTORY_LIMIT = 30;
 
 const defaultForm: FormState = {
@@ -39,8 +47,10 @@ export default function HomePage() {
   const [favorites, setFavorites] = useState<SavedActivity[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
+  const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [executionActivity, setExecutionActivity] = useState<Activity | null>(null);
   const [askActivity, setAskActivity] = useState<Activity | null>(null);
+  const [recordActivity, setRecordActivity] = useState<Activity | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -71,6 +81,14 @@ export default function HomePage() {
     if (storedPresets) {
       try {
         setPresets(JSON.parse(storedPresets));
+      } catch {
+        // ignore
+      }
+    }
+    const storedRecords = localStorage.getItem(RECORDS_KEY);
+    if (storedRecords) {
+      try {
+        setRecords(JSON.parse(storedRecords));
       } catch {
         // ignore
       }
@@ -216,6 +234,27 @@ export default function HomePage() {
     persistPresets(presets.filter((p) => p.id !== id));
   };
 
+  const persistRecords = (next: ExecutionRecord[]) => {
+    setRecords(next);
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(next));
+  };
+
+  const handleSaveRecord = (
+    data: Omit<ExecutionRecord, "id" | "createdAt">,
+  ) => {
+    const record: ExecutionRecord = {
+      ...data,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+    };
+    persistRecords([record, ...records]);
+    setRecordActivity(null);
+  };
+
+  const handleDeleteRecord = (id: string) => {
+    persistRecords(records.filter((r) => r.id !== id));
+  };
+
   const todayTheme = getTodaySeasonContext();
 
   return (
@@ -339,7 +378,9 @@ export default function HomePage() {
                           onVariation={() => handleVariation(idx)}
                           onExecute={() => setExecutionActivity(a)}
                           onAsk={() => setAskActivity(a)}
+                          onRecord={() => setRecordActivity(a)}
                           variationLoading={variationLoadingIndex === idx}
+                          records={records}
                         />
                       ))}
                     </div>
@@ -357,7 +398,9 @@ export default function HomePage() {
                   onVariation={() => handleVariation(i)}
                   onExecute={() => setExecutionActivity(activity)}
                   onAsk={() => setAskActivity(activity)}
+                  onRecord={() => setRecordActivity(activity)}
                   variationLoading={variationLoadingIndex === i}
+                  records={records}
                 />
               ))}
             </div>
@@ -370,10 +413,24 @@ export default function HomePage() {
           <h2 className="mb-4 text-xl font-bold">お気に入り</h2>
           <SavedList
             items={favorites}
+            records={records}
             onRemove={handleRemove}
             onExecute={(a) => setExecutionActivity(a)}
             onAsk={(a) => setAskActivity(a)}
+            onRecord={(a) => setRecordActivity(a)}
           />
+        </section>
+      )}
+
+      {records.length > 0 && (
+        <section className="mt-12 no-print">
+          <h2 className="mb-4 text-xl font-bold">
+            実施履歴
+            <span className="ml-2 text-sm font-normal text-slate-500">
+              ({records.length}件)
+            </span>
+          </h2>
+          <RecordList records={records} onDelete={handleDeleteRecord} />
         </section>
       )}
 
@@ -381,6 +438,10 @@ export default function HomePage() {
         <ExecutionMode
           activity={executionActivity}
           onClose={() => setExecutionActivity(null)}
+          onRecord={() => {
+            setRecordActivity(executionActivity);
+            setExecutionActivity(null);
+          }}
         />
       )}
 
@@ -388,6 +449,14 @@ export default function HomePage() {
         <AskModal
           activity={askActivity}
           onClose={() => setAskActivity(null)}
+        />
+      )}
+
+      {recordActivity && (
+        <RecordModal
+          activity={recordActivity}
+          onClose={() => setRecordActivity(null)}
+          onSave={handleSaveRecord}
         />
       )}
     </main>

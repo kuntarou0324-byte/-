@@ -6,6 +6,7 @@ import type { Activity } from "../types";
 type Props = {
   activity: Activity;
   onClose: () => void;
+  onRecord?: () => void;
 };
 
 function parseMinutes(duration: string): number | null {
@@ -20,7 +21,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function ExecutionMode({ activity, onClose }: Props) {
+export function ExecutionMode({ activity, onClose, onRecord }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
@@ -150,12 +151,22 @@ export function ExecutionMode({ activity, onClose }: Props) {
         </button>
 
         {isLast ? (
-          <button
-            onClick={onClose}
-            className="rounded bg-primary-600 px-6 py-3 text-base font-semibold text-white hover:bg-primary-700"
-          >
-            完了 ✓
-          </button>
+          <div className="flex gap-2">
+            {onRecord && (
+              <button
+                onClick={onRecord}
+                className="rounded border border-emerald-500 px-5 py-3 text-base font-semibold text-emerald-700 hover:bg-emerald-50"
+              >
+                記録して終了
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded bg-primary-600 px-6 py-3 text-base font-semibold text-white hover:bg-primary-700"
+            >
+              完了 ✓
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => setStepIndex((i) => Math.min(total - 1, i + 1))}
