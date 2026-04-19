@@ -205,7 +205,7 @@ export default function HomePage() {
         <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-5">
           <h2 className="text-lg font-bold text-amber-800">週間プラン</h2>
           <p className="mt-1 text-sm text-slate-700">
-            月曜〜金曜の5日分を各日5案ずつ (合計25案)、カテゴリのバランスを考えて一括生成。
+            月曜〜日曜の7日分を各日5案ずつ (合計35案)、カテゴリのバランスを考えて一括生成。
           </p>
           <button
             onClick={handleWeeklyPlan}
@@ -264,7 +264,7 @@ export default function HomePage() {
           </div>
           {mode === "weekly" ? (
             <div className="space-y-8">
-              {["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"].map((day) => {
+              {["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"].map((day) => {
                 const dayItems = activities
                   .map((a, idx) => ({ a, idx }))
                   .filter(({ a }) => a.day_label === day);
