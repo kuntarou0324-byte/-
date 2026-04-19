@@ -194,6 +194,7 @@ export default function HomePage() {
   };
 
   const handleSave = (activity: Activity) => {
+    if (favorites.some((f) => f.title === activity.title)) return;
     const saved: SavedActivity = {
       ...activity,
       savedAt: new Date().toISOString(),
@@ -201,6 +202,8 @@ export default function HomePage() {
     };
     persistFavorites([saved, ...favorites]);
   };
+
+  const savedTitles = new Set(favorites.map((f) => f.title));
 
   const handleRemove = (id: string) => {
     persistFavorites(favorites.filter((f) => f.id !== id));
@@ -381,6 +384,7 @@ export default function HomePage() {
                           onRecord={() => setRecordActivity(a)}
                           variationLoading={variationLoadingIndex === idx}
                           records={records}
+                          alreadySaved={savedTitles.has(a.title)}
                         />
                       ))}
                     </div>
@@ -401,6 +405,7 @@ export default function HomePage() {
                   onRecord={() => setRecordActivity(activity)}
                   variationLoading={variationLoadingIndex === i}
                   records={records}
+                  alreadySaved={savedTitles.has(activity.title)}
                 />
               ))}
             </div>

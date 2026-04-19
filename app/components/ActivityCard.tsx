@@ -11,6 +11,7 @@ type Props = {
   variationLoading?: boolean;
   savedAt?: string;
   records?: ExecutionRecord[];
+  alreadySaved?: boolean;
 };
 
 export function ActivityCard({
@@ -24,6 +25,7 @@ export function ActivityCard({
   variationLoading,
   savedAt,
   records,
+  alreadySaved,
 }: Props) {
   const activityRecords = (records ?? []).filter(
     (r) => r.activityTitle === activity.title,
@@ -173,10 +175,10 @@ export function ActivityCard({
             {onSave && (
               <button
                 onClick={onSave}
-                disabled={variationLoading}
-                className="rounded border border-primary-600 px-3 py-1.5 text-sm text-primary-700 hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={variationLoading || alreadySaved}
+                className="rounded border border-primary-600 px-3 py-1.5 text-sm text-primary-700 hover:bg-primary-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500"
               >
-                お気に入りに保存
+                {alreadySaved ? "✓ 保存済み" : "お気に入りに保存"}
               </button>
             )}
             {onRemove && (
