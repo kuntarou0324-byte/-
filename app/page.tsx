@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityCard } from "./components/ActivityCard";
 import { AskModal } from "./components/AskModal";
 import { ExecutionMode } from "./components/ExecutionMode";
+import { MigrationBanner } from "./components/MigrationBanner";
 import { PlannerForm } from "./components/PlannerForm";
 import { PresetManager, type Preset } from "./components/PresetManager";
 import { RecordList } from "./components/RecordList";
@@ -17,11 +18,8 @@ import type {
   SavedActivity,
 } from "./types";
 
-const STORAGE_KEY = "recreation-favorites-v1";
 const HISTORY_KEY = "recreation-history-v1";
 const FORM_KEY = "recreation-form-v1";
-const PRESETS_KEY = "recreation-presets-v1";
-const RECORDS_KEY = "recreation-records-v1";
 const HISTORY_LIMIT = 30;
 
 const defaultForm: FormState = {
@@ -53,14 +51,6 @@ export default function HomePage() {
   const [recordActivity, setRecordActivity] = useState<Activity | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setFavorites(JSON.parse(stored));
-      } catch {
-        // ignore
-      }
-    }
     const storedHistory = localStorage.getItem(HISTORY_KEY);
     if (storedHistory) {
       try {
@@ -77,34 +67,41 @@ export default function HomePage() {
         // ignore
       }
     }
-    const storedPresets = localStorage.getItem(PRESETS_KEY);
-    if (storedPresets) {
-      try {
-        setPresets(JSON.parse(storedPresets));
-      } catch {
-        // ignore
-      }
-    }
-    const storedRecords = localStorage.getItem(RECORDS_KEY);
-    if (storedRecords) {
-      try {
-        setRecords(JSON.parse(storedRecords));
-      } catch {
-        // ignore
-      }
-    }
     setFormLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [f, p, r] = await Promise.all([
+          fetch("/api/favorites").then((res) => res.json()),
+          fetch("/api/presets").then((res) => res.json()),
+          fetch("/api/records").then((res) => res.json()),
+        ]);
+        if (cancelled) return;
+        setFavorites(f.items ?? []);
+        setPresets(
+          (p.items ?? []).map((x: { id: string; name: string; form: FormState }) => ({
+            id: x.id,
+            name: x.name,
+            form: x.form,
+          })),
+        );
+        setRecords(r.items ?? []);
+      } catch {
+        // ignore; user still sees empty lists
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!formLoaded) return;
     localStorage.setItem(FORM_KEY, JSON.stringify(form));
   }, [form, formLoaded]);
-
-  const persistFavorites = (next: SavedActivity[]) => {
-    setFavorites(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  };
 
   const persistHistory = (next: string[]) => {
     setHistory(next);
@@ -180,7 +177,6 @@ export default function HomePage() {
       }
       const newActivity: Activity | undefined = data.activity;
       if (!newActivity) throw new Error("応答が不正です");
-      // Preserve the day_label from the original (for weekly plans)
       if (original.day_label) newActivity.day_label = original.day_label;
       const next = [...activities];
       next[index] = newActivity;
@@ -193,20 +189,31 @@ export default function HomePage() {
     }
   };
 
-  const handleSave = (activity: Activity) => {
+  const handleSave = async (activity: Activity) => {
     if (favorites.some((f) => f.title === activity.title)) return;
-    const saved: SavedActivity = {
-      ...activity,
-      savedAt: new Date().toISOString(),
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    };
-    persistFavorites([saved, ...favorites]);
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activity }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
+      if (data.saved) setFavorites([data.saved, ...favorites]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "不明なエラー");
+    }
   };
 
   const savedTitles = new Set(favorites.map((f) => f.title));
 
-  const handleRemove = (id: string) => {
-    persistFavorites(favorites.filter((f) => f.id !== id));
+  const handleRemove = async (id: string) => {
+    try {
+      await fetch(`/api/favorites/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setFavorites(favorites.filter((f) => f.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "不明なエラー");
+    }
   };
 
   const handleClearHistory = () => {
@@ -215,61 +222,108 @@ export default function HomePage() {
     }
   };
 
-  const persistPresets = (next: Preset[]) => {
-    setPresets(next);
-    localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
-  };
-
-  const handleSavePreset = (name: string) => {
-    const preset: Preset = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name,
-      form,
-    };
-    persistPresets([preset, ...presets]);
+  const handleSavePreset = async (name: string) => {
+    try {
+      const res = await fetch("/api/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, form }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "保存に失敗しました");
+      const preset: Preset = {
+        id: data.preset.id,
+        name: data.preset.name,
+        form: data.preset.form,
+      };
+      setPresets([preset, ...presets]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "不明なエラー");
+    }
   };
 
   const handleApplyPreset = (presetForm: FormState) => {
     setForm(presetForm);
   };
 
-  const handleDeletePreset = (id: string) => {
-    persistPresets(presets.filter((p) => p.id !== id));
+  const handleDeletePreset = async (id: string) => {
+    try {
+      await fetch(`/api/presets/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setPresets(presets.filter((p) => p.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "不明なエラー");
+    }
   };
 
-  const persistRecords = (next: ExecutionRecord[]) => {
-    setRecords(next);
-    localStorage.setItem(RECORDS_KEY, JSON.stringify(next));
-  };
-
-  const handleSaveRecord = (
+  const handleSaveRecord = async (
     data: Omit<ExecutionRecord, "id" | "createdAt">,
   ) => {
-    const record: ExecutionRecord = {
-      ...data,
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
-    };
-    persistRecords([record, ...records]);
-    setRecordActivity(null);
+    try {
+      const res = await fetch("/api/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error ?? "記録に失敗しました");
+      setRecords([payload.record, ...records]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "不明なエラー");
+    } finally {
+      setRecordActivity(null);
+    }
   };
 
-  const handleDeleteRecord = (id: string) => {
-    persistRecords(records.filter((r) => r.id !== id));
+  const handleDeleteRecord = async (id: string) => {
+    try {
+      await fetch(`/api/records/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setRecords(records.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "不明なエラー");
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  };
+
+  const handleMigrated = (imported: {
+    favorites: SavedActivity[];
+    presets: Preset[];
+    records: ExecutionRecord[];
+  }) => {
+    setFavorites((prev) => {
+      const existing = new Set(prev.map((f) => f.title));
+      return [...imported.favorites.filter((f) => !existing.has(f.title)), ...prev];
+    });
+    setPresets((prev) => [...imported.presets, ...prev]);
+    setRecords((prev) => [...imported.records, ...prev]);
   };
 
   const todayTheme = getTodaySeasonContext();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <header className="mb-8 no-print">
-        <h1 className="text-3xl font-bold text-primary-700">
-          デイサービス レクリエーション プランナー
-        </h1>
-        <p className="mt-2 text-slate-600">
-          条件を入力すると、AI が安全に配慮したレクリエーション案を提案します。
-        </p>
+      <header className="mb-8 flex items-start justify-between gap-4 no-print">
+        <div>
+          <h1 className="text-3xl font-bold text-primary-700">
+            デイサービス レクリエーション プランナー
+          </h1>
+          <p className="mt-2 text-slate-600">
+            条件を入力すると、AI が安全に配慮したレクリエーション案を提案します。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="shrink-0 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+        >
+          ログアウト
+        </button>
       </header>
+
+      <MigrationBanner onMigrated={handleMigrated} />
 
       <section className="mb-6 grid gap-3 md:grid-cols-2 no-print">
         <div className="rounded-lg border-2 border-primary-300 bg-primary-50 p-5">
