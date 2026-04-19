@@ -143,6 +143,47 @@ export const presetsRepo = {
   },
 };
 
+export type DayMemo = {
+  date: string;
+  memo: string;
+  updatedAt: string;
+};
+
+type DayMemoRow = {
+  date: string;
+  memo: string;
+  updated_at: string;
+};
+
+export const dayMemosRepo = {
+  list(from?: string, to?: string): DayMemo[] {
+    const db = getDb();
+    let rows: DayMemoRow[];
+    if (from && to) {
+      rows = db
+        .prepare("SELECT * FROM day_memos WHERE date BETWEEN ? AND ? ORDER BY date ASC")
+        .all(from, to) as DayMemoRow[];
+    } else {
+      rows = db.prepare("SELECT * FROM day_memos ORDER BY date DESC").all() as DayMemoRow[];
+    }
+    return rows.map((r) => ({ date: r.date, memo: r.memo, updatedAt: r.updated_at }));
+  },
+  upsert(date: string, memo: string): DayMemo {
+    const db = getDb();
+    const updatedAt = new Date().toISOString();
+    if (memo.trim() === "") {
+      db.prepare("DELETE FROM day_memos WHERE date = ?").run(date);
+      return { date, memo: "", updatedAt };
+    }
+    db.prepare(
+      `INSERT INTO day_memos (date, memo, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(date) DO UPDATE SET memo = excluded.memo, updated_at = excluded.updated_at`,
+    ).run(date, memo, updatedAt);
+    return { date, memo, updatedAt };
+  },
+};
+
 export const recordsRepo = {
   list(): ExecutionRecord[] {
     const db = getDb();

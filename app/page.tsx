@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ActivityCard } from "./components/ActivityCard";
 import { AskModal } from "./components/AskModal";
+import { DayMemoEditor } from "./components/DayMemoEditor";
 import { ExecutionMode } from "./components/ExecutionMode";
+import { MaterialsList } from "./components/MaterialsList";
 import { MigrationBanner } from "./components/MigrationBanner";
 import { PlannerForm } from "./components/PlannerForm";
 import { PresetManager, type Preset } from "./components/PresetManager";
@@ -12,6 +14,7 @@ import { RecordList } from "./components/RecordList";
 import { RecordModal } from "./components/RecordModal";
 import { SavedList } from "./components/SavedList";
 import { getTodaySeasonContext } from "./lib/season";
+import { WEEKDAY_ORDER, dayLabelToDate, startOfThisWeekMonday } from "./lib/weekly";
 import type {
   Activity,
   ExecutionRecord,
@@ -50,6 +53,8 @@ export default function HomePage() {
   const [executionActivity, setExecutionActivity] = useState<Activity | null>(null);
   const [askActivity, setAskActivity] = useState<Activity | null>(null);
   const [recordActivity, setRecordActivity] = useState<Activity | null>(null);
+  const [weekMonday] = useState<Date>(() => startOfThisWeekMonday());
+  const [dayMemos, setDayMemos] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const storedHistory = localStorage.getItem(HISTORY_KEY);
@@ -143,6 +148,33 @@ export default function HomePage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (mode !== "weekly" || activities.length === 0) return;
+    const from = dayLabelToDate("月曜日", weekMonday);
+    const to = dayLabelToDate("日曜日", weekMonday);
+    if (!from || !to) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/memos?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const m of data.items ?? []) {
+          map[m.date] = m.memo;
+        }
+        setDayMemos(map);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, activities.length, weekMonday]);
 
   const handleSubmit = () => generate(form, "single");
 
@@ -423,18 +455,34 @@ export default function HomePage() {
               印刷
             </button>
           </div>
+          <MaterialsList activities={activities} />
           {mode === "weekly" ? (
             <div className="space-y-8">
-              {["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"].map((day) => {
+              {WEEKDAY_ORDER.map((day) => {
                 const dayItems = activities
                   .map((a, idx) => ({ a, idx }))
                   .filter(({ a }) => a.day_label === day);
                 if (dayItems.length === 0) return null;
+                const date = dayLabelToDate(day, weekMonday);
                 return (
                   <div key={day}>
-                    <h3 className="mb-3 inline-block rounded bg-amber-100 px-3 py-1 text-lg font-bold text-amber-800">
-                      {day}
-                    </h3>
+                    <div className="mb-3 flex items-center gap-3">
+                      <h3 className="inline-block rounded bg-amber-100 px-3 py-1 text-lg font-bold text-amber-800">
+                        {day}
+                      </h3>
+                      {date && (
+                        <span className="text-xs text-slate-500">{date}</span>
+                      )}
+                    </div>
+                    {date && (
+                      <DayMemoEditor
+                        date={date}
+                        initialMemo={dayMemos[date] ?? ""}
+                        onSaved={(memo) =>
+                          setDayMemos((prev) => ({ ...prev, [date]: memo }))
+                        }
+                      />
+                    )}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {dayItems.map(({ a, idx }) => (
                         <ActivityCard

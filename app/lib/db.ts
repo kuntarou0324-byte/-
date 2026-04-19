@@ -44,6 +44,12 @@ function migrate(db: Database.Database) {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS day_memos (
+      date TEXT PRIMARY KEY,
+      memo TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_favorites_saved_at ON favorites(saved_at DESC);
     CREATE INDEX IF NOT EXISTS idx_records_date ON records(date DESC);
     CREATE INDEX IF NOT EXISTS idx_records_created_at ON records(created_at DESC);
