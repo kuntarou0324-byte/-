@@ -51,8 +51,9 @@ function buildUserPrompt(input: GenerateRequest): string {
   const isWeekly = input.mode === "weekly";
   const lines: string[] = isWeekly
     ? [
-        "来週1週間分（月曜日〜金曜日）のレクリエーション計画を考えてください。各曜日に1つの活動、合計5つ。",
-        "カテゴリ（体操/脳トレ/音楽/創作/季節行事/ゲーム/回想）がなるべく異なるようバランス良く配分してください。",
+        "来週1週間分（月曜日〜金曜日）のレクリエーション計画を考えてください。各曜日に5つずつ、合計25個の活動を提案してください。",
+        "1日の5案は、なるべくカテゴリ（体操/脳トレ/音楽/創作/季節行事/ゲーム/回想）が被らないようバランス良く配分してください。",
+        "週全体を通しても題材が繰り返されないよう、多様な内容にしてください。",
         "各活動の day_label に「月曜日」「火曜日」「水曜日」「木曜日」「金曜日」のいずれかを必ず記入してください。",
         "",
       ]
@@ -144,6 +145,7 @@ export async function POST(request: Request) {
         responseMimeType: "application/json",
         responseSchema,
         temperature: 0.9,
+        maxOutputTokens: 16384,
       },
     });
 

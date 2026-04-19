@@ -205,7 +205,7 @@ export default function HomePage() {
         <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-5">
           <h2 className="text-lg font-bold text-amber-800">週間プラン</h2>
           <p className="mt-1 text-sm text-slate-700">
-            月曜〜金曜の5日分を、カテゴリのバランスを考えて一括生成。
+            月曜〜金曜の5日分を各日5案ずつ (合計25案)、カテゴリのバランスを考えて一括生成。
           </p>
           <button
             onClick={handleWeeklyPlan}
@@ -262,25 +262,50 @@ export default function HomePage() {
               印刷
             </button>
           </div>
-          <div
-            className={
-              mode === "weekly"
-                ? "grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-                : "grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-            }
-          >
-            {activities.map((activity, i) => (
-              <ActivityCard
-                key={i}
-                activity={activity}
-                onSave={() => handleSave(activity)}
-                onVariation={() => handleVariation(i)}
-                onExecute={() => setExecutionActivity(activity)}
-                onAsk={() => setAskActivity(activity)}
-                variationLoading={variationLoadingIndex === i}
-              />
-            ))}
-          </div>
+          {mode === "weekly" ? (
+            <div className="space-y-8">
+              {["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"].map((day) => {
+                const dayItems = activities
+                  .map((a, idx) => ({ a, idx }))
+                  .filter(({ a }) => a.day_label === day);
+                if (dayItems.length === 0) return null;
+                return (
+                  <div key={day}>
+                    <h3 className="mb-3 inline-block rounded bg-amber-100 px-3 py-1 text-lg font-bold text-amber-800">
+                      {day}
+                    </h3>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {dayItems.map(({ a, idx }) => (
+                        <ActivityCard
+                          key={idx}
+                          activity={a}
+                          onSave={() => handleSave(a)}
+                          onVariation={() => handleVariation(idx)}
+                          onExecute={() => setExecutionActivity(a)}
+                          onAsk={() => setAskActivity(a)}
+                          variationLoading={variationLoadingIndex === idx}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {activities.map((activity, i) => (
+                <ActivityCard
+                  key={i}
+                  activity={activity}
+                  onSave={() => handleSave(activity)}
+                  onVariation={() => handleVariation(i)}
+                  onExecute={() => setExecutionActivity(activity)}
+                  onAsk={() => setAskActivity(activity)}
+                  variationLoading={variationLoadingIndex === i}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
