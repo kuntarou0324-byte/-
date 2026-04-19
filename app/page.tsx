@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { ActivityCard } from "./components/ActivityCard";
+import { AskModal } from "./components/AskModal";
+import { ExecutionMode } from "./components/ExecutionMode";
 import { PlannerForm } from "./components/PlannerForm";
 import { SavedList } from "./components/SavedList";
 import { getTodaySeasonContext } from "./lib/season";
@@ -32,6 +34,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<SavedActivity[]>([]);
   const [history, setHistory] = useState<string[]>([]);
+  const [executionActivity, setExecutionActivity] = useState<Activity | null>(null);
+  const [askActivity, setAskActivity] = useState<Activity | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -271,6 +275,8 @@ export default function HomePage() {
                 activity={activity}
                 onSave={() => handleSave(activity)}
                 onVariation={() => handleVariation(i)}
+                onExecute={() => setExecutionActivity(activity)}
+                onAsk={() => setAskActivity(activity)}
                 variationLoading={variationLoadingIndex === i}
               />
             ))}
@@ -281,8 +287,27 @@ export default function HomePage() {
       {favorites.length > 0 && (
         <section className="mt-12 no-print">
           <h2 className="mb-4 text-xl font-bold">お気に入り</h2>
-          <SavedList items={favorites} onRemove={handleRemove} />
+          <SavedList
+            items={favorites}
+            onRemove={handleRemove}
+            onExecute={(a) => setExecutionActivity(a)}
+            onAsk={(a) => setAskActivity(a)}
+          />
         </section>
+      )}
+
+      {executionActivity && (
+        <ExecutionMode
+          activity={executionActivity}
+          onClose={() => setExecutionActivity(null)}
+        />
+      )}
+
+      {askActivity && (
+        <AskModal
+          activity={askActivity}
+          onClose={() => setAskActivity(null)}
+        />
       )}
     </main>
   );

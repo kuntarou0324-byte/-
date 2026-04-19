@@ -5,6 +5,8 @@ type Props = {
   onSave?: () => void;
   onRemove?: () => void;
   onVariation?: () => void;
+  onExecute?: () => void;
+  onAsk?: () => void;
   variationLoading?: boolean;
   savedAt?: string;
 };
@@ -14,6 +16,8 @@ export function ActivityCard({
   onSave,
   onRemove,
   onVariation,
+  onExecute,
+  onAsk,
   variationLoading,
   savedAt,
 }: Props) {
@@ -99,7 +103,7 @@ export function ActivityCard({
         </ul>
       </Section>
 
-      {(onSave || onRemove || onVariation) && (
+      {(onSave || onRemove || onVariation || onExecute || onAsk) && (
         <div className="mt-4 flex flex-wrap items-center gap-2 no-print">
           {savedAt && (
             <span className="text-xs text-slate-500">
@@ -107,6 +111,24 @@ export function ActivityCard({
             </span>
           )}
           <div className="ml-auto flex flex-wrap gap-2">
+            {onExecute && (
+              <button
+                onClick={onExecute}
+                disabled={variationLoading}
+                className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                ▶ 実施モード
+              </button>
+            )}
+            {onAsk && (
+              <button
+                onClick={onAsk}
+                disabled={variationLoading}
+                className="rounded border border-slate-400 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                質問する
+              </button>
+            )}
             {onVariation && (
               <button
                 onClick={onVariation}
