@@ -186,7 +186,7 @@ export default function HomePage() {
             今日のおすすめ
           </h2>
           <p className="mt-1 text-sm text-slate-700">
-            今日の季節・行事に合った案を 3 つすぐ生成。
+            今日の季節・行事に合った案を 5 つすぐ生成。
             {todayTheme && (
               <span className="ml-1 text-primary-700">
                 (今日のテーマ: {todayTheme})
@@ -219,7 +219,7 @@ export default function HomePage() {
 
       <div className="mb-4 flex items-center gap-2 no-print">
         <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs text-slate-500">または条件を指定して3案生成</span>
+        <span className="text-xs text-slate-500">または条件を指定して5案生成</span>
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 

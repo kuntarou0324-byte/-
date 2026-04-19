@@ -56,7 +56,7 @@ function buildUserPrompt(input: GenerateRequest): string {
         "各活動の day_label に「月曜日」「火曜日」「水曜日」「木曜日」「金曜日」のいずれかを必ず記入してください。",
         "",
       ]
-    : ["以下の条件でレクリエーション案を3つ考えてください。各活動の day_label は空文字列にしてください。"];
+    : ["以下の条件でレクリエーション案を5つ考えてください。5つとも内容・カテゴリ・アプローチが異なる多様な案にしてください。各活動の day_label は空文字列にしてください。"];
 
   if (input.participants) lines.push(`- 参加人数: ${input.participants}`);
   if (input.level) lines.push(`- 身体機能レベル: ${input.level}`);
