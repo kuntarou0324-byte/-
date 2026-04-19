@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ActivityCard } from "./components/ActivityCard";
 import { AskModal } from "./components/AskModal";
@@ -314,13 +315,21 @@ export default function HomePage() {
             条件を入力すると、AI が安全に配慮したレクリエーション案を提案します。
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="shrink-0 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-        >
-          ログアウト
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href="/reports"
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+          >
+            月次レポート
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+          >
+            ログアウト
+          </button>
+        </div>
       </header>
 
       <MigrationBanner onMigrated={handleMigrated} />
