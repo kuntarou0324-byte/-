@@ -5,12 +5,15 @@ import { ActivityCard } from "./components/ActivityCard";
 import { AskModal } from "./components/AskModal";
 import { ExecutionMode } from "./components/ExecutionMode";
 import { PlannerForm } from "./components/PlannerForm";
+import { PresetManager, type Preset } from "./components/PresetManager";
 import { SavedList } from "./components/SavedList";
 import { getTodaySeasonContext } from "./lib/season";
 import type { Activity, FormState, SavedActivity } from "./types";
 
 const STORAGE_KEY = "recreation-favorites-v1";
 const HISTORY_KEY = "recreation-history-v1";
+const FORM_KEY = "recreation-form-v1";
+const PRESETS_KEY = "recreation-presets-v1";
 const HISTORY_LIMIT = 30;
 
 const defaultForm: FormState = {
@@ -27,6 +30,7 @@ type GenerateMode = "single" | "weekly";
 
 export default function HomePage() {
   const [form, setForm] = useState<FormState>(defaultForm);
+  const [formLoaded, setFormLoaded] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [mode, setMode] = useState<GenerateMode>("single");
   const [loading, setLoading] = useState(false);
@@ -34,6 +38,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<SavedActivity[]>([]);
   const [history, setHistory] = useState<string[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
   const [executionActivity, setExecutionActivity] = useState<Activity | null>(null);
   const [askActivity, setAskActivity] = useState<Activity | null>(null);
 
@@ -54,7 +59,29 @@ export default function HomePage() {
         // ignore
       }
     }
+    const storedForm = localStorage.getItem(FORM_KEY);
+    if (storedForm) {
+      try {
+        setForm({ ...defaultForm, ...JSON.parse(storedForm) });
+      } catch {
+        // ignore
+      }
+    }
+    const storedPresets = localStorage.getItem(PRESETS_KEY);
+    if (storedPresets) {
+      try {
+        setPresets(JSON.parse(storedPresets));
+      } catch {
+        // ignore
+      }
+    }
+    setFormLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (!formLoaded) return;
+    localStorage.setItem(FORM_KEY, JSON.stringify(form));
+  }, [form, formLoaded]);
 
   const persistFavorites = (next: SavedActivity[]) => {
     setFavorites(next);
@@ -167,6 +194,28 @@ export default function HomePage() {
     }
   };
 
+  const persistPresets = (next: Preset[]) => {
+    setPresets(next);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
+  };
+
+  const handleSavePreset = (name: string) => {
+    const preset: Preset = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      form,
+    };
+    persistPresets([preset, ...presets]);
+  };
+
+  const handleApplyPreset = (presetForm: FormState) => {
+    setForm(presetForm);
+  };
+
+  const handleDeletePreset = (id: string) => {
+    persistPresets(presets.filter((p) => p.id !== id));
+  };
+
   const todayTheme = getTodaySeasonContext();
 
   return (
@@ -224,6 +273,13 @@ export default function HomePage() {
       </div>
 
       <section className="no-print">
+        <PresetManager
+          presets={presets}
+          currentForm={form}
+          onApply={handleApplyPreset}
+          onSave={handleSavePreset}
+          onDelete={handleDeletePreset}
+        />
         <PlannerForm
           form={form}
           onChange={setForm}
