@@ -3,10 +3,91 @@
 @tailwind utilities;
 
 @media print {
+  @page {
+    size: A4;
+    margin: 10mm 12mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .no-print {
     display: none !important;
   }
+
+  html,
   body {
     background: white !important;
+    color: #0f172a;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  section {
+    margin-top: 0 !important;
+  }
+
+  h2 {
+    font-size: 14pt !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* Force 2-column layout for activity cards on A4 */
+  section > .grid,
+  .space-y-8 > div > .grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6mm !important;
+  }
+
+  /* Each activity card: no shadow, avoid splitting across pages */
+  article {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+    padding: 8px 10px !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+  }
+
+  article h3 {
+    font-size: 12pt !important;
+    margin-top: 2px !important;
+  }
+
+  article h4 {
+    font-size: 9pt !important;
+    margin-top: 6px !important;
+    margin-bottom: 2px !important;
+  }
+
+  article ol,
+  article ul {
+    padding-left: 16px !important;
+    margin: 0 !important;
+  }
+
+  article li {
+    margin-bottom: 1px;
+  }
+
+  /* Weekly plan: each day starts on a new page (except the first) */
+  .space-y-8 > div + div {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Keep day heading attached to its cards */
+  .space-y-8 > div > h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+    margin-bottom: 4mm !important;
   }
 }
